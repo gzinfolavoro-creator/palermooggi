@@ -11,12 +11,30 @@ const fs = require('fs');
 const https = require('https');
 const http = require('http');
 const { XMLParser } = require('fast-xml-parser');
+const nodemailer = require('nodemailer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const DATA_FILE = path.join(__dirname, 'data', 'articles.json');
+const SUBSCRIBERS_FILE = path.join(__dirname, 'data', 'subscribers.json');
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASS = process.env.ADMIN_PASS || 'palermo2024';
+const GMAIL_USER = process.env.GMAIL_USER || 'palermooggi@gmail.com';
+const GMAIL_PASS = process.env.GMAIL_PASS || ''; // App Password Gmail
+
+// ─── MAILER ──────────────────────────────────
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: { user: GMAIL_USER, pass: GMAIL_PASS }
+});
+
+function loadSubscribers() {
+  try { return JSON.parse(fs.readFileSync(SUBSCRIBERS_FILE, 'utf8')); }
+  catch (e) { return []; }
+}
+function saveSubscribers(list) {
+  fs.writeFileSync(SUBSCRIBERS_FILE, JSON.stringify(list, null, 2));
+}
 
 // ─── MIDDLEWARE ───────────────────────────────
 app.use(cors());
@@ -29,6 +47,9 @@ if (!fs.existsSync(path.join(__dirname, 'data'))) {
 }
 if (!fs.existsSync(DATA_FILE)) {
   fs.writeFileSync(DATA_FILE, JSON.stringify([], null, 2));
+}
+if (!fs.existsSync(SUBSCRIBERS_FILE)) {
+  fs.writeFileSync(SUBSCRIBERS_FILE, JSON.stringify([], null, 2));
 }
 
 function loadArticles() {
@@ -108,7 +129,36 @@ function fetchUrl(url, redirectCount = 0) {
   });
 }
 
-// ─── PARSE RSS ────────────────────────────────
+// ─── DECODE HTML ENTITIES ────────────────────
+function decodeHtmlEntities(str) {
+  if (!str) return '';
+  return str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&#8216;/g, '\u2018')
+    .replace(/&#8217;/g, '\u2019')
+    .replace(/&#8220;/g, '\u201C')
+    .replace(/&#8221;/g, '\u201D')
+    .replace(/&#8211;/g, '\u2013')
+    .replace(/&#8212;/g, '\u2014')
+    .replace(/&#8230;/g, '\u2026')
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&rsquo;/g, '\u2019')
+    .replace(/&lsquo;/g, '\u2018')
+    .replace(/&rdquo;/g, '\u201D')
+    .replace(/&ldquo;/g, '\u201C')
+    .replace(/&ndash;/g, '\u2013')
+    .replace(/&mdash;/g, '\u2014')
+    .replace(/&hellip;/g, '\u2026');
+}
+
+
 function parseRSS(xml, source) {
   const parser = new XMLParser({
     ignoreAttributes: false,
@@ -133,7 +183,7 @@ function parseRSS(xml, source) {
 
   for (const item of items.slice(0, 15)) {
     // Titolo
-    const title = (item.title?.__cdata || item.title || '').toString().trim();
+    const title = decodeHtmlEntities((item.title?.__cdata || item.title || '').toString().trim());
     if (!title) continue;
 
     // Link originale
@@ -146,8 +196,9 @@ function parseRSS(xml, source) {
     // Descrizione / excerpt
     let desc = (item.description?.__cdata || item.description ||
                 item['content:encoded']?.__cdata || item.summary || '').toString();
-    // Rimuovi HTML tags
+    // Rimuovi HTML tags poi decodifica entità
     desc = desc.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    desc = decodeHtmlEntities(desc);
     if (desc.length > 400) desc = desc.slice(0, 400) + '…';
 
     // Immagine: prova varie posizioni RSS standard
@@ -361,8 +412,129 @@ app.post('/api/admin/fetch-rss', authRequired, async (req, res) => {
   }
 });
 
-// GET stato sistema (admin)
-app.get('/api/admin/status', authRequired, (req, res) => {
+// POST iscrizione newsletter
+app.post('/api/newsletter/subscribe', async (req, res) => {
+  const { email } = req.body;
+  if (!email || !email.includes('@')) return res.status(400).json({ error: 'Email non valida' });
+
+  const subscribers = loadSubscribers();
+  if (subscribers.find(s => s.email === email)) {
+    return res.json({ ok: true, message: 'Già iscritto' });
+  }
+
+  subscribers.push({ email, date: new Date().toISOString() });
+  saveSubscribers(subscribers);
+
+  // Invia email di benvenuto all'iscritto
+  try {
+    await transporter.sendMail({
+      from: `"Palermo Oggi" <${GMAIL_USER}>`,
+      to: email,
+      subject: '✅ Iscrizione confermata — Palermo Oggi',
+      html: `
+        <div style="font-family:Georgia,serif;max-width:520px;margin:0 auto;background:#fff;border:1px solid #eee;border-radius:8px;overflow:hidden;">
+          <div style="background:#FF2B2B;padding:24px 28px;">
+            <h1 style="color:#fff;margin:0;font-size:24px;letter-spacing:-0.5px;">Palermo Oggi</h1>
+            <p style="color:rgba(255,255,255,0.8);margin:4px 0 0;font-size:12px;font-family:sans-serif;letter-spacing:2px;text-transform:uppercase;">Notizie da Palermo e dalla Sicilia</p>
+          </div>
+          <div style="padding:28px;">
+            <h2 style="margin:0 0 12px;font-size:18px;">Benvenuto! 🎉</h2>
+            <p style="color:#444;line-height:1.7;margin:0 0 16px;">La tua iscrizione alla newsletter di <strong>Palermo Oggi</strong> è confermata.</p>
+            <p style="color:#444;line-height:1.7;margin:0 0 16px;">Riceverai ogni mattina le ultime notizie da Palermo e dalla Sicilia direttamente nella tua casella email.</p>
+            <a href="https://palermooggi.onrender.com" style="display:inline-block;background:#FF2B2B;color:#fff;text-decoration:none;padding:10px 22px;border-radius:4px;font-family:sans-serif;font-size:13px;font-weight:600;">Visita il sito →</a>
+          </div>
+          <div style="background:#f5f4f1;padding:14px 28px;font-family:sans-serif;font-size:11px;color:#888;">
+            Per disiscriverti rispondi a questa email con oggetto "Disiscrivi".
+          </div>
+        </div>`
+    });
+  } catch (err) {
+    console.error('[MAIL] Errore email benvenuto:', err.message);
+  }
+
+  // Notifica all'admin
+  try {
+    await transporter.sendMail({
+      from: `"Palermo Oggi" <${GMAIL_USER}>`,
+      to: GMAIL_USER,
+      subject: `📬 Nuova iscrizione newsletter: ${email}`,
+      text: `Nuovo iscritto: ${email}\nData: ${new Date().toLocaleString('it-IT')}\nTotale iscritti: ${subscribers.length}`
+    });
+  } catch (err) {
+    console.error('[MAIL] Errore notifica admin:', err.message);
+  }
+
+  res.json({ ok: true, message: 'Iscritto con successo' });
+});
+
+// POST invia newsletter manuale (admin) — manda le ultime notizie a tutti gli iscritti
+app.post('/api/admin/send-newsletter', authRequired, async (req, res) => {
+  const subscribers = loadSubscribers();
+  if (!subscribers.length) return res.json({ ok: false, message: 'Nessun iscritto' });
+
+  const articles = loadArticles().slice(0, 8);
+  if (!articles.length) return res.json({ ok: false, message: 'Nessun articolo da inviare' });
+
+  const newsHtml = articles.map(a => `
+    <div style="border-top:1px solid #eee;padding:14px 0;">
+      <span style="font-family:sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#FF2B2B;">${a.cat}</span>
+      <h3 style="margin:6px 0 4px;font-size:16px;line-height:1.3;">${a.title}</h3>
+      <p style="color:#666;font-size:13px;margin:0 0 6px;line-height:1.5;">${(a.subtitle || '').slice(0, 120)}${(a.subtitle||'').length > 120 ? '…' : ''}</p>
+      <span style="font-family:sans-serif;font-size:11px;color:#999;">${new Date(a.date).toLocaleDateString('it-IT',{day:'numeric',month:'long'})}</span>
+    </div>`).join('');
+
+  let sent = 0, errors = 0;
+  for (const sub of subscribers) {
+    try {
+      await transporter.sendMail({
+        from: `"Palermo Oggi" <${GMAIL_USER}>`,
+        to: sub.email,
+        subject: `📰 Le notizie di oggi da Palermo — ${new Date().toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'})}`,
+        html: `
+          <div style="font-family:Georgia,serif;max-width:520px;margin:0 auto;background:#fff;border:1px solid #eee;border-radius:8px;overflow:hidden;">
+            <div style="background:#FF2B2B;padding:20px 28px;display:flex;align-items:center;justify-content:space-between;">
+              <div>
+                <h1 style="color:#fff;margin:0;font-size:22px;">Palermo Oggi</h1>
+                <p style="color:rgba(255,255,255,0.75);margin:2px 0 0;font-size:11px;font-family:sans-serif;letter-spacing:1.5px;text-transform:uppercase;">Le notizie del giorno</p>
+              </div>
+              <span style="color:rgba(255,255,255,0.6);font-family:sans-serif;font-size:11px;">${new Date().toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'})}</span>
+            </div>
+            <div style="padding:0 28px 8px;">${newsHtml}</div>
+            <div style="padding:18px 28px;text-align:center;">
+              <a href="https://palermooggi.onrender.com" style="background:#FF2B2B;color:#fff;text-decoration:none;padding:10px 24px;border-radius:4px;font-family:sans-serif;font-size:13px;font-weight:600;display:inline-block;">Leggi tutte le notizie →</a>
+            </div>
+            <div style="background:#f5f4f1;padding:12px 28px;font-family:sans-serif;font-size:11px;color:#888;text-align:center;">
+              Per disiscriverti rispondi a questa email con oggetto "Disiscrivi".
+            </div>
+          </div>`
+      });
+      sent++;
+    } catch (err) {
+      console.error(`[MAIL] Errore invio a ${sub.email}:`, err.message);
+      errors++;
+    }
+  }
+
+  res.json({ ok: true, sent, errors, total: subscribers.length });
+});
+
+// GET lista iscritti (admin)
+app.get('/api/admin/subscribers', authRequired, (req, res) => {
+  const subscribers = loadSubscribers();
+  res.json({ count: subscribers.length, subscribers });
+});
+
+// DELETE disiscrizione
+app.delete('/api/newsletter/unsubscribe', (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email mancante' });
+  let subs = loadSubscribers();
+  subs = subs.filter(s => s.email !== email);
+  saveSubscribers(subs);
+  res.json({ ok: true });
+});
+
+
   const articles = loadArticles();
   const rss = articles.filter(a => a.is_rss);
   const manual = articles.filter(a => !a.is_rss);
