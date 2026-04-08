@@ -515,6 +515,10 @@ footer{background:var(--black);color:#fff;padding:2rem 1.2rem;margin-top:2rem;fo
       <div style="margin-top:8px;font-family:var(--sans);font-size:11px;color:#16a34a;">
         ✅ RSS automatico attivo — aggiornamento ogni ora da BlogSicilia.it e PalermoToday.it
       </div>
+      <div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <button class="btn btn-red btn-sm" onclick="adminSendNewsletter()">📧 Invia Newsletter ora</button>
+        <span style="font-family:var(--sans);font-size:11px;color:var(--g5);" id="st-subscribers">Iscritti newsletter: –</span>
+      </div>
     </div>
 
     <div class="adm-grid">
@@ -638,6 +642,10 @@ document.getElementById('logo-area').addEventListener('click', () => {
   if (clickCount >= 3) {
     clickCount = 0;
     openAdminOrLogin();
+  } else if (currentPage !== 'home') {
+    // singolo click → torna alla home
+    showPage('home');
+    renderHome();
   }
 });
 let keySeq = '';
@@ -965,6 +973,13 @@ async function loadAdminData() {
       : 'Nessun articolo ancora';
   } catch(e) {}
 
+  // Iscritti newsletter
+  try {
+    const r2 = await fetch(API + '/api/admin/subscribers', { headers: authHeaders() });
+    const d2 = await r2.json();
+    document.getElementById('st-subscribers').textContent = `Iscritti newsletter: ${d2.count}`;
+  } catch(e) {}
+
   // Lista articoli
   await renderAdminList();
 }
@@ -1097,8 +1112,9 @@ function handleImg(input) {
 // ══════════════════════════════════
 //  UTILS
 // ══════════════════════════════════
-function esc(s){ if(!s) return ''; const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
-function trunc(s,n){ if(!s) return ''; return s.length>n?s.slice(0,n)+'…':s; }
+function decodeHtml(s){ if(!s) return ''; const d=document.createElement('textarea'); d.innerHTML=s; return d.value; }
+function esc(s){ if(!s) return ''; s=decodeHtml(s); const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function trunc(s,n){ if(!s) return ''; s=decodeHtml(s); return s.length>n?s.slice(0,n)+'…':s; }
 function fmtDate(iso){ if(!iso) return ''; return new Date(iso).toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
 function toast(msg){
   const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show');
@@ -1112,28 +1128,38 @@ async function subscribeNL(){
   const btn = document.querySelector('.nl-btn');
   btn.textContent = 'Iscrizione…'; btn.disabled = true;
   try {
-    // Usa Formspree — crea un form gratuito su formspree.io e sostituisci l'ID qui sotto
-    const res = await fetch('https://formspree.io/f/xnnpqzov', {
+    const res = await fetch(API + '/api/newsletter/subscribe', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ email: v, _subject: 'Nuova iscrizione newsletter PalermoOggi' })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: v })
     });
-    if (res.ok) {
-      msgEl.textContent = '✅ Iscritto! Riceverai le notizie ogni mattina.';
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      msgEl.textContent = '✅ Iscritto! Controlla la tua email per la conferma.';
+      msgEl.style.color = '#16a34a';
       msgEl.style.display = 'block';
       emailEl.value = '';
-      setTimeout(() => { msgEl.style.display = 'none'; }, 5000);
+      setTimeout(() => { msgEl.style.display = 'none'; }, 6000);
     } else {
       toast('Errore iscrizione. Riprova.');
     }
   } catch(e) {
-    // Fallback se Formspree non configurato: mostra solo messaggio
-    msgEl.textContent = '✅ Iscritto! Riceverai le notizie ogni mattina.';
-    msgEl.style.display = 'block';
-    emailEl.value = '';
-    setTimeout(() => { msgEl.style.display = 'none'; }, 5000);
+    toast('Errore connessione. Riprova.');
   }
   btn.textContent = 'Iscriviti gratis'; btn.disabled = false;
+}
+
+async function adminSendNewsletter() {
+  if (!confirm('Inviare la newsletter con le ultime notizie a tutti gli iscritti?')) return;
+  const btn = document.querySelector('[onclick="adminSendNewsletter()"]');
+  btn.textContent = '📧 Invio in corso…'; btn.disabled = true;
+  try {
+    const r = await fetch(API + '/api/admin/send-newsletter', { method: 'POST', headers: authHeaders() });
+    const d = await r.json();
+    if (d.ok) toast(`✅ Newsletter inviata a ${d.sent} iscritti${d.errors ? ` (${d.errors} errori)` : ''}`);
+    else toast('⚠ ' + (d.message || 'Errore invio'));
+  } catch(e) { toast('Errore invio newsletter'); }
+  btn.textContent = '📧 Invia Newsletter ora'; btn.disabled = false;
 }
 </script>
 </body>
