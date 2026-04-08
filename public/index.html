@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#C0392B">
 <meta name="description" content="Palermo Oggi — Notizie">
-<title>Palermo Oggi — Notizie da Palermo e dalla Sicilia</title>
+<title>Palermo Oggi — Notizie</title>
 <meta property="og:title" content="Palermo Oggi">
 <meta property="og:description" content="Notizie in tempo reale da Palermo e dalla Sicilia">
 <meta property="og:type" content="website">
@@ -624,13 +624,7 @@ footer{background:var(--black);color:#fff;padding:2rem 1.2rem;margin-top:2rem;fo
 
 <script>
 // ══ CONFIG ══
-const SPORT_SOURCE_LABELS = [
-  'Gazzetta.it',
-  'Corriere dello Sport',
-  'Sky Sport',
-  'Tuttosport',
-  'PalermoToday.it'
-];
+const CATS = ['Tutte','Cronaca','Politica','Comune di Palermo','Traffico & Viabilità','Sport','Palermo Calcio','Economia','Cultura & Spettacoli','Università','Salute','Ambiente & Mare','Sicilia','Notizie Italia'];
 const SPORT_CATS = ['Sport', 'Palermo Calcio'];
 const API = '';
 
@@ -669,104 +663,16 @@ const LIVE_SCORES_DEMO = [
 ];
 
 function renderLiveScores() {
-  const wrapper = document.getElementById('live-scores-wrapper');
   const c = document.getElementById('live-scores-container');
   if (!c) return;
-  fetchLiveScores();
-}
-
-async function fetchLiveScores() {
-  const c = document.getElementById('live-scores-container');
-  if (!c) return;
-
-  c.innerHTML = '<div class="score-loading" style="padding:8px 12px;">🔄 Caricamento risultati…</div>';
-
-  try {
-    const today = new Date().toISOString().split('T')[0];
-    const url = `https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d=${today}&s=Soccer`;
-
-    const res = await fetch(url);
-    const data = await res.json();
-    const events = data.events || [];
-
-    if (!events.length) {
-      c.innerHTML = renderFallbackScores();
-      return;
-    }
-
-    const liveOrRecent = events
-      .filter(e => e.intHomeScore !== null || e.strStatus === 'Match Finished')
-      .slice(0, 8);
-
-    if (!liveOrRecent.length) {
-      c.innerHTML = renderFallbackScores();
-      return;
-    }
-
-    c.innerHTML = liveOrRecent.map(e => {
-      const isLive = e.strStatus && !e.strStatus.includes('Finished') && !e.strStatus.includes('NS');
-      const score = (e.intHomeScore !== null && e.intAwayScore !== null)
-        ? `${e.intHomeScore}-${e.intAwayScore}`
-        : 'vs';
-      const time = e.strProgress || e.strStatus || e.strTime || '';
-
-      return `<div class="score-card">
-        <div class="sc-league">${e.strLeague || 'Calcio'}</div>
-        <div class="sc-teams">${truncateTeam(e.strHomeTeam)} – ${truncateTeam(e.strAwayTeam)}</div>
-        <div class="sc-score" style="${isLive?'color:#4ade80':''}">${score}</div>
-        <div class="sc-time">${time}</div>
-      </div>`;
-    }).join('');
-
-  } catch (e) {
-    c.innerHTML = renderFallbackScores();
-  }
-}
-
-function truncateTeam(name) {
-  if (!name) return '?';
-  return name.length > 12 ? name.slice(0, 11) + '…' : name;
-}
-
-function renderFallbackScores() {
-  return `
-    <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;flex-wrap:wrap;">
-      <div class="score-card" style="min-width:auto;padding:.4rem .8rem;cursor:pointer;" 
-           onclick="window.open('https://www.gazzetta.it/risultati-live/','_blank')">
-        <div class="sc-league">Serie A</div>
-        <div class="sc-teams">Risultati Live</div>
-        <div class="sc-score">📊 →</div>
-        <div class="sc-time">Gazzetta.it</div>
-      </div>
-      <div class="score-card" style="min-width:auto;padding:.4rem .8rem;cursor:pointer;"
-           onclick="window.open('https://www.corrieredellosport.it/calcio/serie-a/','_blank')">
-        <div class="sc-league">Serie B</div>
-        <div class="sc-teams">Classifiche</div>
-        <div class="sc-score">📋 →</div>
-        <div class="sc-time">CdS</div>
-      </div>
-      <a href="https://www.gazzetta.it/risultati-live/" target="_blank" rel="noopener"
-         style="font-family:var(--sans);font-size:11px;color:rgba(255,255,255,.6);
-                text-decoration:none;padding:6px 12px;border:1px solid rgba(255,255,255,.2);
-                border-radius:4px;white-space:nowrap;">
-        🔴 Vedi tutti i risultati live →
-      </a>
-    </div>`;
-}
-
-// 3) ARTICOLI SPORT – VERSIONE AGGIORNATA
-function getSportArticles() {
-  return allArticles.filter(a =>
-    SPORT_CATS.includes(a.cat) ||
-    SPORT_SOURCE_LABELS.includes(a.source_label)
-  );
-}
-// 4) FILTRO SPORT – VERSIONE AGGIORNATA
-function filterSportNews(filter, btn) {
-  currentSportFilter = filter;
-  document.querySelectorAll('.sport-tab-btn').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-  renderSportGrid(filter);
+  c.innerHTML = '';
+  c.style.display = 'contents';
+  LIVE_SCORES_DEMO.forEach(s => {
+    const d = document.createElement('div');
+    d.className = 'score-card';
+    d.innerHTML = `<div class="sc-league">${s.league}</div><div class="sc-teams">${s.teams}</div><div class="sc-score">${s.score}</div><div class="sc-time">${s.time}</div>`;
+    c.appendChild(d);
+  });
 }
 
 // ══ LOGO / CLICK LOGIC ══
@@ -951,23 +857,18 @@ function filterSportNews(filter, btn) {
 function renderSportGrid(filter) {
   const grid = document.getElementById('sport-grid');
   let list = getSportArticles();
-
-  if (filter === 'Gazzetta.it') {
-    list = list.filter(a => a.source_label === 'Gazzetta.it');
-  } else if (filter === 'Corriere dello Sport') {
-    list = list.filter(a => a.source_label === 'Corriere dello Sport');
-  } else if (filter === 'Sky Sport') {
-    list = list.filter(a => a.source_label === 'Sky Sport');
-  } else if (filter === 'Tuttosport') {
-    list = list.filter(a => a.source_label === 'Tuttosport');
-  } else if (filter !== 'all') {
-    list = list.filter(a => a.cat === filter);
-  }
-
-  grid.innerHTML = list.length
-    ? list.map(a => cardHTML(a, true)).join('')
-    : '<div class="empty-state">Nessuna notizia sportiva per questa categoria.</div>';
+  if (filter === 'sportmediaset') list = list.filter(a => a.source_label === 'SportMediaset');
+  else if (filter === 'gazzetta') list = list.filter(a => a.source_label === 'Gazzetta.it');
+  else if (filter !== 'all') list = list.filter(a => a.cat === filter);
+  grid.innerHTML = list.length ? list.map(a => cardHTML(a, true)).join('') : '<div class="empty-state">Nessuna notizia sportiva.</div>';
 }
+
+function renderSportSidebar() {
+  const el = document.getElementById('sport-sidebar');
+  const list = getSportArticles().slice(0, 8);
+  el.innerHTML = list.length ? list.map(a => `<div class="sb-item" onclick="openArticle('${a.id}')"><div class="sb-icat" style="color:var(--sport-blue)">${esc(a.cat)}</div><div class="sb-ititle">${esc(a.title)}</div><div class="sb-idate">${fmtDate(a.date)}</div></div>`).join('') : '<div class="empty-state" style="padding:1rem 0;">Nessuna notizia.</div>';
+}
+
 // ══ HOME ══
 function renderHome() {
   const nonSport = allArticles.filter(a => !SPORT_CATS.includes(a.cat));
@@ -1275,25 +1176,6 @@ async function adminSendNewsletter() {
 <!-- ✅ ADCASH AutoTag -->
 <script type="text/javascript">
   aclib.runAutoTag({ zoneId: 'wfms63y8zm' });
-</script>
-
-<script>
-
-// … tutto il tuo codice JS …
-
-// QUI INCOLLI IL PUNTO 6
-const SPORT_SOURCE_CSS_MAP = {
-  'Gazzetta.it':           'gazzetta',
-  'Corriere dello Sport':  'corrieredellosport',
-  'Sky Sport':             'skysport',
-  'Tuttosport':            'tuttosport',
-  'PalermoToday.it':       'palermotoday',
-  'BlogSicilia.it':        'blogsicilia',
-  'TGCom24':               'tgcom24',
-  'Sky TG24':              'skytg24',
-  'RaiNews':               'rainews',
-};
-
 </script>
 
 </body>
