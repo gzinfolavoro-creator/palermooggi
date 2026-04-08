@@ -17,9 +17,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const DATA_FILE = path.join(__dirname, 'data', 'articles.json');
 const SUBSCRIBERS_FILE = path.join(__dirname, 'data', 'subscribers.json');
-const ADMIN_USER = process.env.ADMIN_USER || 'admin';
+const ADMIN_USER = process.env.ADMIN_USER || 'palermoooggi@admin.com';
 const ADMIN_PASS = process.env.ADMIN_PASS || 'palermo2024';
-const GMAIL_USER = process.env.GMAIL_USER || 'palermooggi@gmail.com';
+const GMAIL_USER = process.env.GMAIL_USER || 'palermoooggi@gmail.com';
 const GMAIL_PASS = process.env.GMAIL_PASS || ''; // App Password Gmail
 
 // ─── MAILER ──────────────────────────────────
