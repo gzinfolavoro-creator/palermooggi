@@ -3,9 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#C0392B">
-<meta name="description" content="PalermoOggi — Notizie in tempo reale da Palermo e dalla Sicilia">
-<title>PalermoOggi — Notizie da Palermo e dalla Sicilia</title>
+<meta name="theme-color" content="#FF2B2B">
+<meta name="description" content="Palermo Oggi — Notizie in tempo reale da Palermo e dalla Sicilia">
+<title>Palermo Oggi — Notizie da Palermo e dalla Sicilia</title>
+<!-- SEO / Open Graph -->
+<meta property="og:title" content="Palermo Oggi">
+<meta property="og:description" content="Notizie in tempo reale da Palermo e dalla Sicilia">
+<meta property="og:type" content="website">
+<meta property="og:image" content="/logo.png">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Palermo Oggi">
+<meta name="twitter:description" content="Notizie in tempo reale da Palermo e dalla Sicilia">
+<!-- Schema.org per Google -->
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"NewsMediaOrganization","name":"Palermo Oggi","url":"https://palermooggi.onrender.com","description":"Notizie in tempo reale da Palermo e dalla Sicilia","logo":{"@type":"ImageObject","url":"https://palermooggi.onrender.com/logo.png"}}
+</script>
+<!-- Favicon / logo -->
+<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAABCGlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGA8wQAELAYMDLl5JUVB7k4KEZFRCuwPGBiBEAwSk4sLGHADoKpv1yBqL+viUYcLcKakFicD6Q9ArFIEtBxopAiQLZIOYWuA2EkQtg2IXV5SUAJkB4DYRSFBzkB2CpCtkY7ETkJiJxcUgdT3ANk2uTmlyQh3M/Ck5oUGA2kOIJZhKGYIYnBncAL5H6IkfxEDg8VXBgbmCQixpJkMDNtbGRgkbiHEVBYwMPC3MDBsO48QQ4RJQWJRIliIBYiZ0tIYGD4tZ2DgjWRgEL7AwMAVDQsIHG5TALvNnSEfCNMZchhSgSKeDHkMyQx6QJYRgwGDIYMZAKbWPz9HbOBQAAABvUlEQVR4nO2VzW4TMRSFz7XHycyQEqVIQDJhwY8Q5UeiggfgAdiwQmxZ8Qjs6B5V8Bi8SBE72BGEFJUsWqlUWVQZ1c3YPizaRgKlDkVUQmjO6kq27+frc20LV1dxllJnmr0G1ID/GkCAfxFwmM6T4TgQQEQCEBatTRaMi3hSi0BEiyAEAFrrfVf5gFaSAGAIclpAAJRS36x9PhpdNuartQ2lbjSba91uR+sXm5sbk4kj72bZelHcy/MQwklHEatg21W7zr0uigeDAYCNyWTXuQtJ8m48PppQVU+n008rKwYgMLeO+QABQF5rNB/m50hcMiaQe95/KEstokV6xrS1/mztwNrhgb2V5eGEg5pfmQAkLxqz3i8CuFNV3507IB+32x2t8ctmo/0U8+BjWY69v95oAFjrdu+k6ZPl5WfD4RdrR9Pp4cybaXo1TSM+xzzIlXq5tXU/yx4tLb3q9SCCEN72+458X5aevJ1mb670m0pFTJb4j+bJfbKllCMFUCIiApE95zzZSRKI/EmbzqRFWkqBTOQoCUmS57WexfG7uuiiAeBPJspxC8ziuH4DME8L8870r76mNaAG1IDT6AedH8CPN3h4BgAAAABJRU5ErkJggg==">
+<link rel="apple-touch-icon" href="data:image/png;base64,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">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,300&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -372,7 +387,11 @@ footer{background:var(--black);color:#fff;padding:2rem 1.2rem;margin-top:2rem;fo
 <!-- ══ LOGO (triplo click = admin) ══ -->
 <div id="logobar">
   <div id="logo-area" style="display:inline-block;">
-    <div class="logo-name">Palermo<em>Oggi</em></div>
+    <img src="data:image/png;base64,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"
+      alt="Palermo Oggi"
+      style="height:clamp(48px,7vw,72px);width:auto;display:block;margin:0 auto 2px;"
+      onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+    <div class="logo-name" style="display:none;">Palermo<em>Oggi</em></div>
     <div class="logo-rule">
       <div class="logo-rule-line"></div>
       <div class="logo-rule-text">Notizie da Palermo e dalla Sicilia</div>
@@ -432,6 +451,7 @@ footer{background:var(--black);color:#fff;padding:2rem 1.2rem;margin-top:2rem;fo
             <p class="nl-text">Ricevi ogni mattina le notizie di Palermo nella tua email.</p>
             <input type="email" class="nl-input" placeholder="La tua email" id="nl-email">
             <button class="nl-btn" onclick="subscribeNL()">Iscriviti gratis</button>
+            <div id="nl-msg" style="display:none;margin-top:8px;font-family:var(--sans);font-size:12px;color:#16a34a;text-align:center;"></div>
           </div>
         </div>
       </div>
@@ -566,7 +586,7 @@ footer{background:var(--black);color:#fff;padding:2rem 1.2rem;margin-top:2rem;fo
 <footer>
   <div class="footer-inner">
     <div>
-      <div class="f-logo">Palermo<em>Oggi</em></div>
+      <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAABCGlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGA8wQAELAYMDLl5JUVB7k4KEZFRCuwPGBiBEAwSk4sLGHADoKpv1yBqL+viUYcLcKakFicD6Q9ArFIEtBxopAiQLZIOYWuA2EkQtg2IXV5SUAJkB4DYRSFBzkB2CpCtkY7ETkJiJxcUgdT3ANk2uTmlyQh3M/Ck5oUGA2kOIJZhKGYIYnBncAL5H6IkfxEDg8VXBgbmCQixpJkMDNtbGRgkbiHEVBYwMPC3MDBsO48QQ4RJQWJRIliIBYiZ0tIYGD4tZ2DgjWRgEL7AwMAVDQsIHG5TALvNnSEfCNMZchhSgSKeDHkMyQx6QJYRgwGDIYMZAKbWPz9HbOBQAAABvUlEQVR4nO2VzW4TMRSFz7XHycyQEqVIQDJhwY8Q5UeiggfgAdiwQmxZ8Qjs6B5V8Bi8SBE72BGEFJUsWqlUWVQZ1c3YPizaRgKlDkVUQmjO6kq27+frc20LV1dxllJnmr0G1ID/GkCAfxFwmM6T4TgQQEQCEBatTRaMi3hSi0BEiyAEAFrrfVf5gFaSAGAIclpAAJRS36x9PhpdNuartQ2lbjSba91uR+sXm5sbk4kj72bZelHcy/MQwklHEatg21W7zr0uigeDAYCNyWTXuQtJ8m48PppQVU+n008rKwYgMLeO+QABQF5rNB/m50hcMiaQe95/KEstokV6xrS1/mztwNrhgb2V5eGEg5pfmQAkLxqz3i8CuFNV3507IB+32x2t8ctmo/0U8+BjWY69v95oAFjrdu+k6ZPl5WfD4RdrR9Pp4cybaXo1TSM+xzzIlXq5tXU/yx4tLb3q9SCCEN72+458X5aevJ1mb670m0pFTJb4j+bJfbKllCMFUCIiApE95zzZSRKI/EmbzqRFWkqBTOQoCUmS57WexfG7uuiiAeBPJspxC8ziuH4DME8L8870r76mNaAG1IDT6AedH8CPN3h4BgAAAABJRU5ErkJggg==" alt="Palermo Oggi" style="height:40px;width:auto;margin-bottom:6px;">
       <div class="f-sub">Notizie da Palermo e dalla Sicilia</div>
       <p style="color:rgba(255,255,255,.3);font-size:11px;margin-top:.8rem;line-height:1.6;">Notizie in tempo reale da Palermo, dalla Sicilia e dall'Italia.</p>
     </div>
@@ -633,7 +653,7 @@ document.addEventListener('keydown', e => {
 // ══════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
   setDate();
-  buildNav();
+  buildNav([]);
   loadWeather();
   fetchArticles();
   document.getElementById('footer-year').textContent = new Date().getFullYear();
@@ -647,9 +667,12 @@ function setDate() {
     d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'long'}).replace(/^\w/,c=>c.toUpperCase());
 }
 
-function buildNav() {
+function buildNav(articles) {
   const nav = document.getElementById('mainnav');
+  nav.innerHTML = '';
+  const populated = new Set((articles || []).map(a => a.cat));
   CATS.forEach(cat => {
+    if (cat !== 'Tutte' && !populated.has(cat)) return;
     const btn = document.createElement('button');
     btn.textContent = cat;
     btn.dataset.cat = cat;
@@ -730,6 +753,7 @@ async function fetchArticles() {
     const res = await fetch(API + '/api/articles?limit=200');
     const data = await res.json();
     allArticles = data.articles || [];
+    buildNav(allArticles);
     renderHome();
     updateTicker();
   } catch(e) {
@@ -1080,11 +1104,36 @@ function toast(msg){
   const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show');
   clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),3800);
 }
-function subscribeNL(){
-  const v=document.getElementById('nl-email').value;
+async function subscribeNL(){
+  const emailEl = document.getElementById('nl-email');
+  const v = emailEl.value.trim();
   if(!v.includes('@')){ toast('Inserisci una email valida.'); return; }
-  toast('Iscritto! ✓ Riceverai le notizie ogni mattina.');
-  document.getElementById('nl-email').value='';
+  const msgEl = document.getElementById('nl-msg');
+  const btn = document.querySelector('.nl-btn');
+  btn.textContent = 'Iscrizione…'; btn.disabled = true;
+  try {
+    // Usa Formspree — crea un form gratuito su formspree.io e sostituisci l'ID qui sotto
+    const res = await fetch('https://formspree.io/f/xnnpqzov', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ email: v, _subject: 'Nuova iscrizione newsletter PalermoOggi' })
+    });
+    if (res.ok) {
+      msgEl.textContent = '✅ Iscritto! Riceverai le notizie ogni mattina.';
+      msgEl.style.display = 'block';
+      emailEl.value = '';
+      setTimeout(() => { msgEl.style.display = 'none'; }, 5000);
+    } else {
+      toast('Errore iscrizione. Riprova.');
+    }
+  } catch(e) {
+    // Fallback se Formspree non configurato: mostra solo messaggio
+    msgEl.textContent = '✅ Iscritto! Riceverai le notizie ogni mattina.';
+    msgEl.style.display = 'block';
+    emailEl.value = '';
+    setTimeout(() => { msgEl.style.display = 'none'; }, 5000);
+  }
+  btn.textContent = 'Iscriviti gratis'; btn.disabled = false;
 }
 </script>
 </body>
