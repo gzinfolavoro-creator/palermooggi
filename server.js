@@ -1,6 +1,6 @@
 /**
  * PalermoOggi — Backend Server
- * Scarica automaticamente notizie da RSS ogni ora
+ * Scarica automaticamente notizie da RSS ogni 5 minuti
  * Serve il frontend e le API per le notizie
  */
 
@@ -203,8 +203,6 @@ function decodeHtmlEntities(str) {
 }
 
 // ─── NORMALIZZA TITOLO per deduplicazione ────
-// Rimuove punteggiatura, mette minuscolo, spazi multipli
-// Due articoli con titoli >85% simili vengono considerati duplicati
 function normalizeTitle(title) {
   if (!title) return '';
   return title
@@ -238,18 +236,13 @@ function parseRSS(xml, source) {
   const results = [];
 
   for (const item of items.slice(0, 20)) {
-    // Titolo
     const title = decodeHtmlEntities((item.title?.__cdata || item.title || '').toString().trim());
     if (!title) continue;
 
-    // Link originale
     const link = (item.link?.__cdata || item.link || item.guid || '').toString().trim();
-
-    // Data
     const pubDate = item.pubDate || item['dc:date'] || item.published || item.updated || '';
     const date = pubDate ? new Date(pubDate).toISOString() : new Date().toISOString();
 
-    // Descrizione — prende il testo più lungo disponibile
     let desc = (
       item['content:encoded']?.__cdata ||
       item['content:encoded'] ||
@@ -261,12 +254,9 @@ function parseRSS(xml, source) {
     desc = desc.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     desc = decodeHtmlEntities(desc);
 
-    // subtitle breve (max 250 chars)
     const subtitle = desc.length > 250 ? desc.slice(0, 250) + '…' : desc;
-    // body lungo (max 900 chars) — più testo nella scheda articolo e newsletter
     const body = desc.length > 900 ? desc.slice(0, 900) + '…' : desc;
 
-    // Immagine: prova varie posizioni RSS standard
     let img = '';
     if (item.enclosure?.['@_url']) img = item.enclosure['@_url'];
     else if (item['media:content']?.['@_url']) img = item['media:content']['@_url'];
@@ -282,7 +272,6 @@ function parseRSS(xml, source) {
       if (imgMatch) img = imgMatch[1];
     }
 
-    // Categoria
     let cat = source.default_cat;
     const rawCat = (item.category?.__cdata || item.category || '').toString().trim();
     if (rawCat) {
@@ -317,7 +306,6 @@ function parseRSS(xml, source) {
 async function fetchAllRSS(verbose = false) {
   const existing = loadArticles();
   const existingLinks = new Set(existing.map(a => a.source_link).filter(Boolean));
-  // Set titoli normalizzati per deduplicazione semantica tra fonti diverse
   const existingTitles = new Set(existing.map(a => normalizeTitle(a.title)));
 
   const newArticles = [];
@@ -332,23 +320,16 @@ async function fetchAllRSS(verbose = false) {
       let addedFromSource = 0;
 
       for (const item of items) {
-        // Salta se link già presente
         if (item.link && existingLinks.has(item.link)) continue;
-
         const normTitle = normalizeTitle(item.title);
-
-        // Salta se titolo identico già nel DB
         if (existingTitles.has(normTitle)) continue;
-
-        // Salta se titolo identico già aggiunto in questo ciclo
         if (seenTitlesThisRun.has(normTitle)) continue;
 
         const article = {
           id: 'rss_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
           title: item.title,
           subtitle: item.subtitle,
-          body: item.body
-            + (item.link ? `\n\nPer leggere l'articolo completo visita la fonte originale.` : ''),
+          body: item.body,
           cat: item.cat,
           author: source.source_label + ' — Redazione',
           img: item.img || '',
@@ -377,29 +358,32 @@ async function fetchAllRSS(verbose = false) {
   if (newArticles.length > 0) {
     newArticles.sort((a, b) => new Date(b.date) - new Date(a.date));
     const updated = [...newArticles, ...existing];
-    const trimmed = updated.slice(0, 600); // più slot con le nuove fonti
+    const trimmed = updated.slice(0, 600);
     saveArticles(trimmed);
     console.log(`[RSS] Salvati ${newArticles.length} nuovi articoli. Totale: ${trimmed.length}`);
   } else {
-    console.log('[RSS] Nessun nuovo articolo trovato.');
+    if (verbose) console.log('[RSS] Nessun nuovo articolo trovato.');
   }
 
   return { added: newArticles.length, errors: fetchErrors };
 }
 
-// ─── AUTO FETCH ogni ora ──────────────────────
+// ─── AUTO FETCH ogni 5 minuti ─────────────────
+const FETCH_INTERVAL_MS = 5 * 60 * 1000; // 5 minuti
+
 let fetchInterval = null;
 function startAutoFetch() {
-  console.log('[SCHEDULER] Avvio fetch automatico ogni 60 minuti...');
+  console.log('[SCHEDULER] Avvio fetch automatico ogni 5 minuti...');
+  // Prima esecuzione immediata
   fetchAllRSS(true).catch(console.error);
+  // Poi ogni 5 minuti
   fetchInterval = setInterval(() => {
-    console.log('[SCHEDULER] Fetch automatico RSS...');
+    console.log('[SCHEDULER] Fetch automatico RSS (ogni 5 min)...');
     fetchAllRSS(true).catch(console.error);
-  }, 60 * 60 * 1000);
+  }, FETCH_INTERVAL_MS);
 }
 
 // ─── NEWSLETTER HTML BUILDER ─────────────────
-// Costruisce email ricca: logo + articoli con immagine, testo completo e link fonte
 function buildNewsletterHtml(articles, isWelcome = false) {
   const siteUrl = 'https://palermooggi.onrender.com';
   const today = new Date().toLocaleDateString('it-IT', {
@@ -408,10 +392,8 @@ function buildNewsletterHtml(articles, isWelcome = false) {
 
   const articlesHtml = articles.map(a => {
     const imgBlock = a.img
-      ? `<img src="${a.img}"
-             alt="${(a.title || '').replace(/"/g, '&quot;')}"
-             style="width:100%;max-height:300px;object-fit:cover;display:block;
-                    border-radius:4px;margin-bottom:16px;">`
+      ? `<img src="${a.img}" alt="${(a.title || '').replace(/"/g, '&quot;')}"
+             style="width:100%;max-height:300px;object-fit:cover;display:block;border-radius:4px;margin-bottom:16px;">`
       : '';
 
     const bodyText = (a.body || a.subtitle || '')
@@ -419,23 +401,16 @@ function buildNewsletterHtml(articles, isWelcome = false) {
       .replace(/Per leggere l'articolo completo visita la fonte originale\./g, '');
 
     const linkBlock = (a.source_label && a.source_link)
-      ? `<div style="margin-top:14px;padding:12px 16px;background:#f5f4f1;
-                     border-left:3px solid #C0392B;border-radius:0 4px 4px 0;">
+      ? `<div style="margin-top:14px;padding:12px 16px;background:#f5f4f1;border-left:3px solid #C0392B;border-radius:0 4px 4px 0;">
            <p style="font-family:sans-serif;font-size:11px;color:#888;margin:0 0 6px;">
              📰 Fonte: <strong style="color:#C0392B;">${a.source_label}</strong>
            </p>
-           <a href="${a.source_link}"
-              style="display:inline-block;font-family:sans-serif;font-size:12px;font-weight:700;
-                     color:#fff;background:#C0392B;text-decoration:none;
-                     padding:7px 16px;border-radius:3px;">
+           <a href="${a.source_link}" style="display:inline-block;font-family:sans-serif;font-size:12px;font-weight:700;color:#fff;background:#C0392B;text-decoration:none;padding:7px 16px;border-radius:3px;">
              Leggi l'articolo completo →
            </a>
          </div>`
       : `<div style="margin-top:14px;">
-           <a href="${siteUrl}"
-              style="display:inline-block;font-family:sans-serif;font-size:12px;font-weight:700;
-                     color:#fff;background:#C0392B;text-decoration:none;
-                     padding:7px 16px;border-radius:3px;">
+           <a href="${siteUrl}" style="display:inline-block;font-family:sans-serif;font-size:12px;font-weight:700;color:#fff;background:#C0392B;text-decoration:none;padding:7px 16px;border-radius:3px;">
              Leggi su PalermoOggi →
            </a>
          </div>`;
@@ -443,99 +418,55 @@ function buildNewsletterHtml(articles, isWelcome = false) {
     return `
       <div style="border-top:2px solid #e8e6e1;padding:28px 0 12px;">
         <div style="margin-bottom:12px;">
-          <span style="font-family:sans-serif;font-size:10px;font-weight:700;
-                       letter-spacing:2px;text-transform:uppercase;
-                       background:#C0392B;color:#fff;padding:3px 10px;border-radius:2px;">
+          <span style="font-family:sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;background:#C0392B;color:#fff;padding:3px 10px;border-radius:2px;">
             ${a.cat || 'Notizie'}
           </span>
         </div>
         ${imgBlock}
-        <h2 style="font-family:Georgia,serif;font-size:22px;font-weight:700;
-                   line-height:1.3;margin:0 0 12px;color:#0f0f0f;">
+        <h2 style="font-family:Georgia,serif;font-size:22px;font-weight:700;line-height:1.3;margin:0 0 12px;color:#0f0f0f;">
           ${a.title}
         </h2>
-        <p style="font-family:Georgia,serif;font-size:15px;line-height:1.8;
-                  color:#2a2a2a;margin:0 0 8px;">
+        <p style="font-family:Georgia,serif;font-size:15px;line-height:1.8;color:#2a2a2a;margin:0 0 8px;">
           ${bodyText}
         </p>
         <div style="font-family:sans-serif;font-size:11px;color:#aaa;margin-bottom:4px;">
-          ${new Date(a.date).toLocaleDateString('it-IT', {
-            day: 'numeric', month: 'long', year: 'numeric',
-            hour: '2-digit', minute: '2-digit'
-          })} · ${a.author || 'Redazione'}
+          ${new Date(a.date).toLocaleDateString('it-IT', { day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit' })} · ${a.author || 'Redazione'}
         </div>
         ${linkBlock}
       </div>`;
   }).join('');
 
-  return `<!DOCTYPE html>
-<html lang="it">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>PalermoOggi Newsletter</title>
-</head>
+  return `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>PalermoOggi Newsletter</title></head>
 <body style="margin:0;padding:20px 0;background:#ece9e3;font-family:Georgia,serif;">
-  <div style="max-width:600px;margin:0 auto;background:#fff;
-              border-radius:8px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.1);">
-
-    <!-- HEADER -->
+  <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.1);">
     <div style="background:#0f0f0f;padding:28px 36px;text-align:center;">
-      <div style="font-family:Georgia,serif;font-size:36px;font-weight:900;
-                  color:#fff;letter-spacing:-1.5px;line-height:1;">
+      <div style="font-family:Georgia,serif;font-size:36px;font-weight:900;color:#fff;letter-spacing:-1.5px;line-height:1;">
         Palermo<span style="color:#C0392B;">Oggi</span>
       </div>
-      <div style="font-family:sans-serif;font-size:10px;letter-spacing:3px;
-                  text-transform:uppercase;color:rgba(255,255,255,0.3);margin-top:8px;">
+      <div style="font-family:sans-serif;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.3);margin-top:8px;">
         Notizie da Palermo e dalla Sicilia
       </div>
-      <div style="font-family:sans-serif;font-size:12px;
-                  color:rgba(255,255,255,0.4);margin-top:8px;">
-        ${today}
-      </div>
+      <div style="font-family:sans-serif;font-size:12px;color:rgba(255,255,255,0.4);margin-top:8px;">${today}</div>
     </div>
-
-    <!-- INTRO BANNER -->
     <div style="background:#C0392B;padding:16px 36px;text-align:center;">
       <p style="font-family:sans-serif;font-size:14px;color:#fff;margin:0;font-weight:500;">
-        ${isWelcome
-          ? '🎉 Benvenuto! Ecco le ultime notizie per iniziare.'
-          : '📰 Le notizie del giorno, con tutti i dettagli.'}
+        ${isWelcome ? '🎉 Benvenuto! Ecco le ultime notizie per iniziare.' : '📰 Le notizie del giorno, con tutti i dettagli.'}
       </p>
     </div>
-
-    <!-- ARTICOLI -->
-    <div style="padding:12px 36px 28px;">
-      ${articlesHtml}
-    </div>
-
-    <!-- CTA FINALE -->
-    <div style="padding:28px 36px;text-align:center;
-                background:#f5f4f1;border-top:2px solid #e8e6e1;">
-      <p style="font-family:sans-serif;font-size:13px;color:#666;margin:0 0 18px;line-height:1.6;">
-        Rimani sempre aggiornato su tutto quello che succede<br>a Palermo e in Sicilia.
-      </p>
-      <a href="${siteUrl}"
-         style="display:inline-block;background:#0f0f0f;color:#fff;text-decoration:none;
-                padding:13px 30px;border-radius:4px;font-family:sans-serif;
-                font-size:13px;font-weight:700;letter-spacing:.05em;">
+    <div style="padding:12px 36px 28px;">${articlesHtml}</div>
+    <div style="padding:28px 36px;text-align:center;background:#f5f4f1;border-top:2px solid #e8e6e1;">
+      <a href="${siteUrl}" style="display:inline-block;background:#0f0f0f;color:#fff;text-decoration:none;padding:13px 30px;border-radius:4px;font-family:sans-serif;font-size:13px;font-weight:700;">
         Visita PalermoOggi →
       </a>
     </div>
-
-    <!-- FOOTER -->
     <div style="background:#0f0f0f;padding:18px 36px;text-align:center;">
-      <p style="font-family:sans-serif;font-size:11px;
-                color:rgba(255,255,255,0.3);margin:0;line-height:1.7;">
+      <p style="font-family:sans-serif;font-size:11px;color:rgba(255,255,255,0.3);margin:0;line-height:1.7;">
         © ${new Date().getFullYear()} PalermoOggi — Tutti i diritti riservati<br>
-        Per disiscriverti rispondi con oggetto
-        <strong style="color:rgba(255,255,255,0.5);">Disiscrivi</strong>
+        Per disiscriverti rispondi con oggetto <strong style="color:rgba(255,255,255,0.5);">Disiscrivi</strong>
       </p>
     </div>
-
   </div>
-</body>
-</html>`;
+</body></html>`;
 }
 
 // ─── API ROUTES ───────────────────────────────
@@ -564,6 +495,15 @@ app.get('/api/articles/:id', (req, res) => {
   const article = articles.find(a => a.id === req.params.id);
   if (!article) return res.status(404).json({ error: 'Articolo non trovato' });
   res.json(article);
+});
+
+// GET timestamp ultimo aggiornamento (usato dal frontend per polling)
+app.get('/api/last-update', (req, res) => {
+  const articles = loadArticles();
+  res.json({
+    last_update: articles.length > 0 ? articles[0].date : null,
+    total: articles.length
+  });
 });
 
 // POST login admin
@@ -653,7 +593,6 @@ app.post('/api/newsletter/subscribe', async (req, res) => {
   subscribers.push({ email, date: new Date().toISOString() });
   saveSubscribers(subscribers);
 
-  // Email benvenuto con le ultime 4 notizie complete
   try {
     const articles = loadArticles().slice(0, 4);
     const html = buildNewsletterHtml(articles, true);
@@ -667,7 +606,6 @@ app.post('/api/newsletter/subscribe', async (req, res) => {
     console.error('[MAIL] Errore email benvenuto:', err.message);
   }
 
-  // Notifica all'admin
   try {
     await transporter.sendMail({
       from: `"Palermo Oggi" <${GMAIL_USER}>`,
@@ -752,6 +690,6 @@ app.get('*', (req, res) => {
 // ─── START ───────────────────────────────────
 app.listen(PORT, () => {
   console.log(`\n🗞  PalermoOggi Server avviato su porta ${PORT}`);
-  console.log(`📡 RSS automatico ogni ora da ${RSS_SOURCES.length} fonti`);
+  console.log(`📡 RSS automatico ogni 5 minuti da ${RSS_SOURCES.length} fonti`);
   startAutoFetch();
 });
