@@ -634,6 +634,12 @@ footer{background:var(--black);color:#fff;padding:1.8rem 1rem;margin-top:1.5rem;
     </div>
   </div>
   <div class="f-copy">© <span id="footer-year"></span> PalermoOggi — Tutti i diritti riservati</div>
+  <p style="text-align:center; margin-top:40px; font-size:14px;">
+  Powered by 
+  <a href="https://codesud.onrender.com" target="_blank" style="color:#f5b942; text-decoration:none;">
+    CodeSud
+  </a>
+</p>
 </footer>
 
 <script>
@@ -1301,11 +1307,5 @@ function trunc(s,n){ if(!s) return ''; s=decodeHtml(s); return s.length>n?s.slic
 function fmtDate(iso){ if(!iso) return ''; return new Date(iso).toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
 function toast(msg){ const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),3800); }
 </script>
-  <p style="text-align:center; margin-top:40px; font-size:14px;">
-  Powered by 
-  <a href="https://codesud.onrender.com" target="_blank" style="color:#f5b942; text-decoration:none;">
-    CodeSud
-  </a>
-</p>
 </body>
 </html>
